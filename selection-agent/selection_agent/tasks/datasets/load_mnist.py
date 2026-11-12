@@ -20,7 +20,7 @@ def load_mnist_data(partition_id: int, num_partitions: int, noniid: bool = False
         self_balancing=True
     )
     fds = FederatedDataset(
-        dataset='mnist',
+        dataset='ylecun/mnist',
         partitioners={"train": partitioner},
     )
     partition = fds.load_partition(partition_id)

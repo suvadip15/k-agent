@@ -61,6 +61,8 @@ class FedAgent(FedAvg):
             sz = self.sample_size
             if self.sample_size == -2:
                 sz = int(random.randint(2, len(clients)))
+            if sz > 0:
+                sz = min(sz, len(clients))
             log(INFO, f"K: {sz} SELECTING...")
             result = self.selection_method.sample_clients(clients, sz, curr_rnd=server_round, total_rnd=total_rnd)
             e_time = time.process_time()
@@ -73,7 +75,7 @@ class FedAgent(FedAvg):
         self.federation_data[server_round]['selection_algorithm'] = selection_algorithm
         self.federation_data[server_round]['prompt_type'] = self.prompt_type
         for cid in node_ids:
-            if not cid in self.how_many_times_was_selected:
+            if str(cid) not in self.how_many_times_was_selected:
                 self.how_many_times_was_selected[str(cid)] = 0
             self.how_many_times_was_selected[str(cid)] += 1
 

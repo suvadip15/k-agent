@@ -1,3 +1,6 @@
+import os
+os.makedirs("./outputs", exist_ok=True)
+os.makedirs("./models", exist_ok=True)
 import torch
 from flwr.app import ArrayRecord, ConfigRecord, Context
 from flwr.serverapp import Grid, ServerApp
