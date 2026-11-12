@@ -50,14 +50,16 @@ class FedAgent(FedAvg):
         total_rnd: int,
     ) -> Iterable[Message]:
         num_nodes = len(list(grid.get_node_ids()))
-        s_time = time.process_time()
+        s_time = time.perf_counter()
         node_ids, num_total = sample_nodes(grid, num_nodes, num_nodes) # All clients
-        e_time = time.process_time()
+        e_time = time.perf_counter()
         selection_algorithm = 'all-clients'
         messages = []
+        agent_tries = None
+        agent_fallback = False
         if server_round > 1:
             log(INFO, "configure_train: Initialize selection with agent")
-            s_time = time.process_time()
+            s_time = time.perf_counter()
             sz = self.sample_size
             if self.sample_size == -2:
                 sz = int(random.randint(2, len(clients)))
@@ -65,12 +67,16 @@ class FedAgent(FedAvg):
                 sz = min(sz, len(clients))
             log(INFO, f"K: {sz} SELECTING...")
             result = self.selection_method.sample_clients(clients, sz, curr_rnd=server_round, total_rnd=total_rnd)
-            e_time = time.process_time()
+            e_time = time.perf_counter()
             log(INFO, result)
             node_ids = [int(client['cid']) for client in result['selected_clients']]
             selection_algorithm = result['selection_algorithm']
             messages = messages_to_dict(result['messages'])
+            agent_tries = result.get('agent_tries')
+            agent_fallback = result.get('agent_fallback', False)
         self.federation_data[server_round]['sample_time'] = e_time - s_time
+        self.federation_data[server_round]['agent_tries'] = agent_tries
+        self.federation_data[server_round]['agent_fallback'] = agent_fallback
         self.federation_data[server_round]['selection_method'] = self.selection_method_name
         self.federation_data[server_round]['selection_algorithm'] = selection_algorithm
         self.federation_data[server_round]['prompt_type'] = self.prompt_type
@@ -136,19 +142,19 @@ class FedAgent(FedAvg):
                     config=train_config,
                     grid=grid,
                     clients=list(clients.values()),
-                    total_rnd = num_rounds+1,
+                    total_rnd = num_rounds,
                 ),
                 timeout=timeout,
             )
             # Aggregate train
             # Update the client-utility mapping.
             # Comm_round_time is training time plus communication time.
-            s_time = time.process_time()
+            s_time = time.perf_counter()
             agg_arrays, agg_train_metrics = self.aggregate_train(
                 current_round,
                 train_replies,
             )                    
-            e_time = time.process_time()
+            e_time = time.perf_counter()
             training_time = e_time - s_time
 
             # Log training metrics and append to history

@@ -9,6 +9,14 @@ from langchain.messages import ToolMessage
 from ..selections import Oort
 import json
 
+def _clamp_k(k, n, min_k=2):
+    """Guardrail: K must be an integer in [min_k, n]."""
+    try:
+        k = int(round(float(k)))
+    except Exception:
+        k = min_k
+    return max(min(min_k, n), min(k, n))
+
 
 @tool
 def get_clients_stats(runtime: ToolRuntime) -> T.Dict[str, float|str]:
@@ -176,12 +184,14 @@ def poc_selection(
     """
     clients = runtime.state['clients']
     k = runtime.state['sample_size'] if runtime.state['sample_size'] > 0 else k
+    k = _clamp_k(k, len(clients))
     dataset_sizes = [client['train_dataset_size'] for client in clients]
     total_size = sum(dataset_sizes)
     weights = [size / total_size for size in dataset_sizes]
     if len(clients) < k:
         return clients
-    random_selected_clients = np.random.choice(clients, p=weights, size=k, replace=False).tolist()
+    d = min(len(clients), max(k + 1, 2 * k))  # candidate set larger than k
+    random_selected_clients = np.random.choice(clients, p=weights, size=d, replace=False).tolist()
     # Loss-based selection
     clients_sorted_by_loss = sorted(random_selected_clients, key = lambda c: c['train_loss'], reverse = True) # sort by descending loss
     selected_clients = clients_sorted_by_loss[:k]
